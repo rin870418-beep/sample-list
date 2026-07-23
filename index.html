@@ -359,6 +359,10 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
           <input type="email" value="{{ email2 }}" onChange="{{ setEmail2 }}" placeholder="참조 메일 2" style="border:1px solid #d4d4d0;border-radius:9px;padding:10px 12px;font-size:13.5px;outline:none" style-focus="border-color:#171717">
         </div>
       </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:14px;border-top:1px solid #eeeeec;padding-top:18px;margin-top:2px">
+        <sc-if value="{{ settingsDirty }}"><span style="font-size:12.5px;color:#c2410c;font-weight:600;display:inline-flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:#c2410c"></span>저장하지 않은 변경사항이 있어요</span></sc-if>
+        <button onClick="{{ saveSettings }}" style="background:#171717;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer" style-hover="opacity:.85">저장</button>
+      </div>
     </div>
     </sc-if>
 
@@ -564,7 +568,7 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;showRemaining&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;설정&quot;}}">
 class Component extends DCLogic {
-  state = { view:'main', authed:false, adminTab:'products', editId:null, dirty:false, editLang:'ko', pwEmail:'', pw:'', pwErr:'', products:[], settings:{title:'샘플 리스트',subtitle:'선착순으로 선택할 수 있어요. 원하는 옵션을 누르고 인스타그램 아이디를 남기면 확정됩니다.',email1:'',email2:''}, ci:{}, urls:{}, lightbox:null, claiming:null, cname:'', cErr:'', cship:{}, copt:{}, csizes:[], uploading:null, ubuyer:'', usize:'', uother:'', uErr:'', ustage:[], umsg:'', toast:'', viewer:'', vinput:'', vErr:'', showPending:false, lang:'ko' };
+  state = { view:'main', authed:false, adminTab:'products', editId:null, dirty:false, settingsDirty:false, editLang:'ko', pwEmail:'', pw:'', pwErr:'', products:[], settings:{title:'샘플 리스트',subtitle:'선착순으로 선택할 수 있어요. 원하는 옵션을 누르고 인스타그램 아이디를 남기면 확정됩니다.',email1:'',email2:''}, ci:{}, urls:{}, lightbox:null, claiming:null, cname:'', cErr:'', cship:{}, copt:{}, csizes:[], uploading:null, ubuyer:'', usize:'', uother:'', uErr:'', ustage:[], umsg:'', toast:'', viewer:'', vinput:'', vErr:'', showPending:false, lang:'ko' };
   trGet(obj,lang,field){ if(!obj) return ''; if(lang==='ko') return obj[field]||''; const t=obj.tr&&obj.tr[lang]; return (t&&t[field]!=null&&String(t[field]).trim()!=='')?t[field]:(obj[field]||''); }
   setTr(id,lang,field,value){ this.upd(id,pp=>{ if(lang==='ko') return {[field]:value}; const tr={...(pp.tr||{})}; tr[lang]={...(tr[lang]||{}),[field]:value}; return {tr}; }); }
   setSizeTr(id,i,lang,field,value){ this.upd(id,pp=>({sizes:pp.sizes.map((x,j)=>{ if(j!==i) return x; if(lang==='ko') return {...x,[field]:value}; const tr={...(x.tr||{})}; tr[lang]={...(tr[lang]||{}),[field]:value}; return {...x,tr}; })})); }
@@ -600,7 +604,7 @@ class Component extends DCLogic {
       const patch={ products };
       // 설정 탭이 열려 있으면 서버값으로 덮어쓰지 않는다 — 다른 테이블 변경이 부른 reload가
       // 입력 중이거나 아직 저장 전(persistSettings 500ms 디바운스)인 설정 글자를 지워버리는 버그 방지.
-      if(se.data && this.state.adminTab!=='settings'){ const { admin_ids, ...s }=se.data; patch.settings={ ...this.state.settings, ...s, adminIds:admin_ids||'' }; }
+      if(se.data && this.state.adminTab!=='settings' && !this.state.settingsDirty){ const { admin_ids, ...s }=se.data; patch.settings={ ...this.state.settings, ...s, adminIds:admin_ids||'' }; }
       this.setState(patch);
     }catch(e){ console.error('reload', e); }
   }
@@ -610,7 +614,7 @@ class Component extends DCLogic {
     try{ const lg=localStorage.getItem('sm-lang-v1'); if(lg) this.setState({lang:lg}); }catch(e){}
     this._reload();
     this._resubscribe();
-    window.addEventListener('beforeunload',e=>{ if(this.state.dirty){ e.preventDefault(); e.returnValue=''; } });
+    window.addEventListener('beforeunload',e=>{ if(this.state.dirty||this.state.settingsDirty){ e.preventDefault(); e.returnValue=''; } });
     this._sb().auth.onAuthStateChange((_e,session)=>{ const authed=!!session; this.setState({authed}); this._resubscribe(); this._reload(authed); });
   }
   persist(products){
@@ -635,13 +639,13 @@ class Component extends DCLogic {
     tw:{ navMain:'主頁', navAdmin:'管理', vTitle:'輸入Instagram帳號', vPh:'@Instagram帳號', vEnter:'進入', vErrEmpty:'請輸入Instagram帳號', viewingAs:'目前帳號', change:'更改', left:n=>'剩'+n+'個', closedShort:'已截止', available:'可選', closedBadge:'已截止', deadline:(m,d)=>'~ '+m+'/'+d+' 截止', uploadLink:'上傳收到的商品照片', emptyMain:'尚無商品。請在管理頁面新增商品。', claimIntro:'先到先得。將以下方資訊進行申請。', instaId:'Instagram帳號', optSelect:'選擇選項', optMulti:'可選擇多個', copyForm:'複製格式', copyFormBtn:'複製', cancel:'取消', confirm:'確認選擇', uSuffix:'· 上傳照片', uIntro:'請上傳您收到的商品照片。可一次上傳多張，保持原始畫質。', optOptional:'選項（可選）', other:'其他', otherPh:'請輸入選項', msgLabel:'留言（可選）', msgPh:'可自由填寫您想留下的話', priorHint:s=>'之前選擇的選項：'+s, uPick:'選擇照片 · 一次多張', uPickSub:'手機可在相簿中選擇多張 · 電腦可直接拖曳', uStageLabel:n=>'已選'+n+'張照片', uSubmitN:n=>'上傳'+n+'張', uSubmit0:'上傳照片', uErrId:'請輸入Instagram帳號', uErrPhoto:'請先選擇照片', cErrName:'請輸入姓名或Instagram帳號', cErrOpt:'請選擇選項', cErrClosed:'該商品已截止。', cErrJustClosed:lb=>'「'+lb+'」選項剛剛售罄', cErrLimit:(mine,lim)=>(mine>0?'您已選擇'+mine+'個。':'')+'該帳號最多可選'+lim+'個', toastConfirm:(name,prod,n)=>name+'，您對「'+prod+'」的'+(n>1?n+'個選項':'')+'選擇已確認', uploading:n=>'正在上傳'+n+'張照片…', uploaded:n=>'已上傳'+n+'張照片', uploadPartial:(ok,total)=>'部分儲存失敗（'+ok+'/'+total+'）' }
   }; }
   persistSettings(patch){
-    const settings={...this.state.settings,...patch};
-    this.setState({settings});
-    clearTimeout(this.__pss);
-    this.__pss=setTimeout(()=>{
-      const s=this.state.settings;
-      this._sb().from('settings').upsert({ id:1, title:s.title||'', subtitle:s.subtitle||'', email1:s.email1||'', email2:s.email2||'', w3key:s.w3key||'', admin_ids:s.adminIds||'', tr:s.tr||{} }).then(({error})=>{ if(error) this.flash('설정 저장 실패'); });
-    }, 500);
+    // 입력은 로컬 초안에만 반영하고 '저장' 버튼(saveSettings)을 눌러야 DB에 반영된다.
+    this.setState({settings:{...this.state.settings,...patch}, settingsDirty:true});
+  }
+  saveSettings(){
+    const s=this.state.settings;
+    this.setState({settingsDirty:false});
+    this._sb().from('settings').upsert({ id:1, title:s.title||'', subtitle:s.subtitle||'', email1:s.email1||'', email2:s.email2||'', w3key:s.w3key||'', admin_ids:s.adminIds||'', tr:s.tr||{} }).then(({error})=>{ if(error){ this.flash('설정 저장 실패'); this.setState({settingsDirty:true}); } else this.flash('설정이 저장되었습니다'); });
   }
   upd(id,patch){ this.setState({dirty:true,products:this.state.products.map(p=>p.id===id?{...p,...(typeof patch==='function'?patch(p):patch)}:p)}); }
   flash(msg){ this.setState({toast:msg}); clearTimeout(this._tt); this._tt=setTimeout(()=>this.setState({toast:''}),2800); }
@@ -1071,6 +1075,7 @@ class Component extends DCLogic {
       email1:st.settings.email1||'', setEmail1:e=>this.persistSettings({email1:e.target.value}),
       email2:st.settings.email2||'', setEmail2:e=>this.persistSettings({email2:e.target.value}),
       w3key:st.settings.w3key||'', setW3key:e=>this.persistSettings({w3key:e.target.value}),
+      settingsDirty:st.settingsDirty, saveSettings:()=>this.saveSettings(),
       unsentCount:unsent.length, hasUnsent:unsent.length>0,
       uploadOpen:!!st.uploading, uTitle, uSizes, hasUSizes:uSizes.length>0,
       uPriorHint, hasUPrior, uShowOther, uother:st.uother, setUother:e=>this.setState({uother:e.target.value}),
