@@ -201,8 +201,9 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
         <div style="display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;flex-wrap:wrap;gap:10px">
             <sc-for list="{{ p.images }}" as="im" hint-placeholder-count="0">
-              <div style="position:relative;width:76px;height:76px;border-radius:10px;overflow:hidden;border:1px solid #e3e3e0">
-                <img src="{{ im.url }}" style="width:100%;height:100%;object-fit:cover">
+              <div draggable="{{ true }}" onDragStart="{{ im.dragStart }}" onDragOver="{{ im.dragOver }}" onDrop="{{ im.drop }}" onDragEnd="{{ im.dragEnd }}" style="{{ im.wrapStyle }}">
+                <img src="{{ im.url }}" style="width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none;user-select:none">
+                <sc-if value="{{ im.isMain }}"><span style="position:absolute;bottom:0;left:0;right:0;background:rgba(23,23,23,.8);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.02em;text-align:center;padding:2px 0;pointer-events:none">대표</span></sc-if>
                 <button onClick="{{ im.del }}" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(23,23,23,.75);color:#fff;font-size:11px;line-height:1;cursor:pointer">✕</button>
               </div>
             </sc-for>
@@ -833,7 +834,13 @@ class Component extends DCLogic {
         remove:()=>{ if(window.confirm('이 상품을 삭제할까요?')) this.persist(this.state.products.filter(x=>x.id!==p.id)); },
         statusText:closed?'마감':'판매중',
         statusStyle:{fontSize:'11.5px',fontWeight:700,letterSpacing:'.08em',borderRadius:'999px',padding:'5px 12px',whiteSpace:'nowrap',background:closed?'#171717':'#f0f0ee',color:closed?'#fff':'#5c5c58'},
-        images:(p.images||[]).map((u,i)=>({url:u,del:()=>this.upd(p.id,pp=>({images:pp.images.filter((_,j)=>j!==i)}))})),
+        images:(p.images||[]).map((u,i)=>({url:u,isMain:i===0,
+          wrapStyle:'position:relative;width:76px;height:76px;border-radius:10px;overflow:hidden;cursor:grab;border:'+(i===0?'2px solid #171717':'1px solid #e3e3e0'),
+          del:()=>this.upd(p.id,pp=>({images:pp.images.filter((_,j)=>j!==i)})),
+          dragStart:e=>{ this._imgDrag={pid:p.id,from:i}; if(e.dataTransfer){ e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',String(i));}catch(_){} } },
+          dragOver:e=>{ if(this._imgDrag&&this._imgDrag.pid===p.id){ e.preventDefault(); if(e.dataTransfer)e.dataTransfer.dropEffect='move'; } },
+          drop:e=>{ e.preventDefault(); const d=this._imgDrag; this._imgDrag=null; if(!d||d.pid!==p.id||d.from===i) return; this.upd(p.id,pp=>{ const arr=[...(pp.images||[])]; const [m]=arr.splice(d.from,1); arr.splice(i,0,m); return {images:arr}; }); },
+          dragEnd:()=>{ this._imgDrag=null; }})),
         paste:e=>{ const items=(e.clipboardData&&e.clipboardData.items)||[]; for(const it of items){ if(it.type&&it.type.indexOf('image')===0){ e.preventDefault(); this.readImg(it.getAsFile(),url=>this.upd(p.id,pp=>({images:[...(pp.images||[]),url]}))); } } },
         drop:e=>{ e.preventDefault(); Array.from((e.dataTransfer&&e.dataTransfer.files)||[]).forEach(f=>this.readImg(f,url=>this.upd(p.id,pp=>({images:[...(pp.images||[]),url]})))); },
         dragOver:e=>e.preventDefault(),
