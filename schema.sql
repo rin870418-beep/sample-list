@@ -142,6 +142,31 @@ $$;
 grant execute on function claim(text, text, text, jsonb, jsonb) to anon, authenticated;
 
 -- ============================================================
+--  7-b) unclaim() : 관리자가 명단에서 1건 취소 — submissions 삭제 + 재고 -1
+--       (claim 의 짝. 관리자만 실행. 손님(anon)은 호출 불가)
+-- ============================================================
+create or replace function unclaim(p_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_pid text;
+  v_key text;
+begin
+  delete from submissions where id = p_id
+    returning product_id, size_key into v_pid, v_key;
+  if v_pid is null then return; end if;   -- 이미 삭제된 행이면 조용히 종료
+  update size_counts set claimed = greatest(0, claimed - 1)
+    where product_id = v_pid and size_key = v_key;
+end;
+$$;
+
+revoke all on function unclaim(bigint) from anon, public;
+grant execute on function unclaim(bigint) to authenticated;
+
+-- ============================================================
 --  8) RLS (행 수준 보안)
 -- ============================================================
 alter table products     enable row level security;

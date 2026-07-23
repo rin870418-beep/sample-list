@@ -581,7 +581,7 @@ class Component extends DCLogic {
   _docOf(p){ const { gallery, id, ...rest }=p; return { ...rest, sizes:(p.sizes||[]).map(s=>{ const { claims, ...sr }=s; return { ...sr, key:s.key||this._k() }; }) }; }
   _buildProducts(rows, counts, subs, phs){
     const cmap={}; (counts||[]).forEach(c=>{ (cmap[c.product_id]=cmap[c.product_id]||{})[c.size_key]=c.claimed; });
-    const smap={}; (subs||[]).forEach(s=>{ const k=s.product_id+'|'+s.size_key; (smap[k]=smap[k]||[]).push({ buyer:s.buyer, at:new Date(s.created_at).getTime(), ship:s.ship||{}, opt:s.opt||{} }); });
+    const smap={}; (subs||[]).forEach(s=>{ const k=s.product_id+'|'+s.size_key; (smap[k]=smap[k]||[]).push({ id:s.id, buyer:s.buyer, at:new Date(s.created_at).getTime(), ship:s.ship||{}, opt:s.opt||{} }); });
     const gmap={}; (phs||[]).forEach(g=>{ (gmap[g.product_id]=gmap[g.product_id]||[]).push({ key:g.id, url:this._photoUrl(g.path), buyer:g.buyer, size:g.size, msg:g.msg, name:g.filename, type:g.mime, bytes:g.bytes, at:new Date(g.created_at).getTime(), sent:g.sent, path:g.path }); });
     return (rows||[]).map(r=>{ const p={ ...(r.doc||{}), id:r.id }; p.sizes=(p.sizes||[]).map(s=>{ const key=s.key; const real=smap[r.id+'|'+key]; const claimed=(cmap[r.id]||{})[key]||0; return { ...s, claims: real || Array.from({length:claimed},()=>({buyer:'',at:0,ship:{},opt:{}})) }; }); p.gallery=gmap[r.id]||[]; return p; });
   }
@@ -755,7 +755,7 @@ class Component extends DCLogic {
         size:r.size, optLine:ol||'—',
         time:new Date(r.cl.at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}),
         copy:()=>this.copyToClip(r.size+(ol?' · '+ol:'')),
-        del:()=>this.upd(p.id,pp=>({sizes:pp.sizes.map((x,j)=>j===r.si?{...x,claims:x.claims.filter((_,k)=>k!==r.ci)}:x)})) }; });
+        del:async()=>{ const cid=r.cl.id; if(cid==null){ this.flash('취소할 수 없는 항목입니다'); return; } if(!window.confirm('이 명단 1건을 취소할까요? 손님 신청이 삭제되고 재고가 1 늘어납니다. 되돌릴 수 없습니다.')) return; const { error }=await this._sb().rpc('unclaim',{ p_id:cid }); if(error){ this.flash('취소 실패: '+error.message); return; } this.setState({products:this.state.products.map(x=>x.id===p.id?{...x,sizes:(x.sizes||[]).map(sz=>({...sz,claims:(sz.claims||[]).filter(c=>c.id!==cid)}))}:x)}); this.flash('명단 1건을 취소했습니다'); } }; });
       const _text=()=>{ const head=grp.buyer||'(아이디 미입력)'; const lines=rows.map(r=>{ const ol=optLineOf(r.cl); return r.size+(ol?' · '+ol:''); }); return head+(shipLine?'\n'+shipLine:'')+'\n'+lines.join('\n'); };
       const bkey=(grp.buyer||'').trim().toLowerCase().replace(/^@/,'');
       const noPhoto=!!bkey&&!uploaders.has(bkey);
