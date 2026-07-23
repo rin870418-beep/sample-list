@@ -63,7 +63,7 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
       <sc-for list="{{ cards }}" as="c" hint-placeholder-count="3">
         <div style="background:#fff;border:1px solid #e3e3e0;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
           <div style="position:relative;aspect-ratio:4/3;background:#ececea">
-            <sc-if value="{{ c.hasImg }}"><img src="{{ c.curImg }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></sc-if>
+            <sc-if value="{{ c.hasImg }}"><img src="{{ c.curImg }}" onClick="{{ c.openMain }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;cursor:zoom-in"></sc-if>
             <sc-if value="{{ c.noImg }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;text-align:center"><span style="{{ c.bigNameStyle }}">{{ c.name }}</span></div></sc-if>
             <sc-if value="{{ c.multi }}">
               <button onClick="{{ c.prev }}" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,255,255,.85);color:#171717;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
@@ -80,14 +80,26 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
               <div style="font-size:12px;color:#8a8a86;white-space:nowrap">{{ c.deadlineText }}</div>
             </div>
             <sc-if value="{{ c.hasDesc }}"><div style="font-size:13.5px;line-height:1.65;color:#5c5c58;white-space:pre-wrap;text-wrap:pretty">{{ c.desc }}</div></sc-if>
+            <sc-if value="{{ c.showThumbs }}">
+              <div style="display:flex;flex-direction:column;gap:5px;padding-top:2px">
+                <span style="font-size:11.5px;color:#8a8a86;font-weight:600;word-break:keep-all">상품 사진 <span style="color:#b3b3af;font-weight:400">· 눌러서 크게 보기</span></span>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ c.mainThumbs }}" as="mt" hint-placeholder-count="0">
+                    <img src="{{ mt.url }}" onClick="{{ mt.open }}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:1px solid #e3e3e0;cursor:zoom-in" style-hover="border-color:#171717"></sc-for>
+                </div>
+              </div>
+            </sc-if>
             <sc-if value="{{ c.hasOptImgs }}">
-              <div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:2px">
-                <sc-for list="{{ c.optImgs }}" as="oi" hint-placeholder-count="0">
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:58px">
-                    <img src="{{ oi.img }}" style="width:58px;height:58px;border-radius:8px;object-fit:cover;border:1px solid #e3e3e0">
-                    <span style="font-size:11px;color:#8a8a86;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58px">{{ oi.label }}</span>
-                  </div>
-                </sc-for>
+              <div style="display:flex;flex-direction:column;gap:5px;padding-top:2px">
+                <span style="font-size:11.5px;color:#8a8a86;font-weight:600;word-break:keep-all">옵션 사진 <span style="color:#b3b3af;font-weight:400">· 선택 옵션별 이미지</span></span>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                  <sc-for list="{{ c.optImgs }}" as="oi" hint-placeholder-count="0">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:58px">
+                      <img src="{{ oi.img }}" onClick="{{ oi.open }}" style="width:58px;height:58px;border-radius:8px;object-fit:cover;border:1px solid #e3e3e0;cursor:zoom-in" style-hover="border-color:#171717">
+                      <span style="font-size:11px;color:#8a8a86;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58px">{{ oi.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
               </div>
             </sc-if>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:6px">
@@ -533,6 +545,18 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
     </div>
   </sc-if>
 
+  <sc-if value="{{ lightboxOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeLightbox }}" style="position:fixed;inset:0;z-index:130;background:rgba(23,23,23,.82);display:flex;align-items:center;justify-content:center;padding:32px">
+      <img src="{{ lightboxImg }}" onClick="{{ lightboxImgClick }}" style="max-width:92vw;max-height:88vh;object-fit:contain;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.4)">
+      <button onClick="{{ closeLightbox }}" style="position:fixed;top:20px;right:24px;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,.9);color:#171717;font-size:19px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      <sc-if value="{{ lightboxMulti }}">
+        <button onClick="{{ lightboxPrev }}" style="position:fixed;left:20px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.9);color:#171717;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
+        <button onClick="{{ lightboxNext }}" style="position:fixed;right:20px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.9);color:#171717;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
+        <div style="position:fixed;bottom:24px;left:0;right:0;text-align:center;color:#fff;font-size:13px;font-weight:500">{{ lightboxCounter }}</div>
+      </sc-if>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
     <div style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:120;background:#171717;color:#fff;border-radius:999px;padding:12px 24px;font-size:13.5px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.18);white-space:nowrap">{{ toast }}</div>
   </sc-if>
@@ -540,7 +564,7 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;showRemaining&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;설정&quot;}}">
 class Component extends DCLogic {
-  state = { view:'main', authed:false, adminTab:'products', editId:null, dirty:false, editLang:'ko', pwEmail:'', pw:'', pwErr:'', products:[], settings:{title:'샘플 리스트',subtitle:'선착순으로 선택할 수 있어요. 원하는 옵션을 누르고 인스타그램 아이디를 남기면 확정됩니다.',email1:'',email2:''}, ci:{}, urls:{}, claiming:null, cname:'', cErr:'', cship:{}, copt:{}, csizes:[], uploading:null, ubuyer:'', usize:'', uother:'', uErr:'', ustage:[], umsg:'', toast:'', viewer:'', vinput:'', vErr:'', showPending:false, lang:'ko' };
+  state = { view:'main', authed:false, adminTab:'products', editId:null, dirty:false, editLang:'ko', pwEmail:'', pw:'', pwErr:'', products:[], settings:{title:'샘플 리스트',subtitle:'선착순으로 선택할 수 있어요. 원하는 옵션을 누르고 인스타그램 아이디를 남기면 확정됩니다.',email1:'',email2:''}, ci:{}, urls:{}, lightbox:null, claiming:null, cname:'', cErr:'', cship:{}, copt:{}, csizes:[], uploading:null, ubuyer:'', usize:'', uother:'', uErr:'', ustage:[], umsg:'', toast:'', viewer:'', vinput:'', vErr:'', showPending:false, lang:'ko' };
   trGet(obj,lang,field){ if(!obj) return ''; if(lang==='ko') return obj[field]||''; const t=obj.tr&&obj.tr[lang]; return (t&&t[field]!=null&&String(t[field]).trim()!=='')?t[field]:(obj[field]||''); }
   setTr(id,lang,field,value){ this.upd(id,pp=>{ if(lang==='ko') return {[field]:value}; const tr={...(pp.tr||{})}; tr[lang]={...(tr[lang]||{}),[field]:value}; return {tr}; }); }
   setSizeTr(id,i,lang,field,value){ this.upd(id,pp=>({sizes:pp.sizes.map((x,j)=>{ if(j!==i) return x; if(lang==='ko') return {...x,[field]:value}; const tr={...(x.tr||{})}; tr[lang]={...(tr[lang]||{}),[field]:value}; return {...x,tr}; })})); }
@@ -757,9 +781,12 @@ class Component extends DCLogic {
       const idx=imgs.length?(((st.ci[p.id]||0)%imgs.length)+imgs.length)%imgs.length:0;
       const nm=this.trGet(p,st.lang,'name')||'이름 없는 상품', nl=nm.length;
       const tdesc=this.trGet(p,st.lang,'desc');
-      const optImgs=(p.sizes||[]).filter(s=>s.img).map(s=>({img:s.img,label:this.trGet(s,st.lang,'label')||'옵션'}));
+      const optImgs=(p.sizes||[]).filter(s=>s.img).map(s=>({img:s.img,label:this.trGet(s,st.lang,'label')||'옵션',open:()=>this.setState({lightbox:{imgs:[s.img],i:0}})}));
       return { id:p.id, name:nm, hasImg:imgs.length>0, noImg:imgs.length===0, curImg:imgs[idx], closed, closedBadge:L.closedBadge, uploadLabel:L.uploadLink,
         multi:imgs.length>1,
+        openMain:()=>this.setState({lightbox:{imgs,i:idx}}),
+        showThumbs:imgs.length>1,
+        mainThumbs:imgs.map((u,i)=>({url:u,active:i===idx,open:()=>this.setState({lightbox:{imgs,i}})})),
         prev:()=>this.setCi(p.id,i=>i-1), next:()=>this.setCi(p.id,i=>i+1),
         dots:imgs.map((_,i)=>({style:{display:'block',width:i===idx?'16px':'6px',height:'6px',borderRadius:'999px',background:i===idx?'#171717':'rgba(23,23,23,.35)',transition:'width .2s'}})),
         bigNameStyle:{fontWeight:700,letterSpacing:'-.02em',lineHeight:1.2,color:'#3d3d3a',textWrap:'balance',wordBreak:'keep-all',fontSize:(nl>22?'22px':nl>12?'28px':'36px')},
@@ -1081,7 +1108,15 @@ class Component extends DCLogic {
       cname:st.cname, cKey:e=>{ if(e.key==='Enter') confirmClaim(); },
       setCname:e=>{ const v=e.target.value; this.setState(s=>{ let cship=s.cship||{}; const key=v.trim().toLowerCase(); if(key&&s.claiming){ const p=s.products.find(x=>x.id===s.claiming.pid); if(p){ const prev=(p.sizes||[]).flatMap(sz=>sz.claims||[]).filter(c=>(c.buyer||'').trim().toLowerCase()===key).sort((a,b)=>b.at-a.at)[0]; if(prev&&prev.ship){ const merged={...prev.ship}; Object.keys(cship).forEach(k=>{ if(cship[k]) merged[k]=cship[k]; }); cship=merged; } } } return {cname:v,cErr:'',cship}; }); },
       cErr:st.cErr, hasCErr:!!st.cErr, confirmClaim,
-      toast:st.toast, hasToast:!!st.toast
+      toast:st.toast, hasToast:!!st.toast,
+      lightboxOpen:!!st.lightbox,
+      lightboxImg:(()=>{ const lb=st.lightbox; if(!lb||!lb.imgs.length) return ''; const n=lb.imgs.length; return lb.imgs[(((lb.i%n)+n)%n)]; })(),
+      lightboxMulti:!!st.lightbox&&st.lightbox.imgs.length>1,
+      lightboxCounter:(()=>{ const lb=st.lightbox; if(!lb||lb.imgs.length<2) return ''; const n=lb.imgs.length; return ((((lb.i%n)+n)%n)+1)+' / '+n; })(),
+      lightboxPrev:e=>{ if(e&&e.stopPropagation) e.stopPropagation(); this.setState(s=>({lightbox:{...s.lightbox,i:s.lightbox.i-1}})); },
+      lightboxNext:e=>{ if(e&&e.stopPropagation) e.stopPropagation(); this.setState(s=>({lightbox:{...s.lightbox,i:s.lightbox.i+1}})); },
+      lightboxImgClick:e=>{ if(e&&e.stopPropagation) e.stopPropagation(); },
+      closeLightbox:()=>this.setState({lightbox:null})
     };
   }
 }
