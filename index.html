@@ -240,6 +240,23 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
         </div>
         <textarea value="{{ p.guide }}" onChange="{{ p.setGuide }}" placeholder="{{ p.guidePh }}" rows="2" style="border:1px solid #d4d4d0;border-radius:9px;padding:11px 12px;font-size:13.5px;line-height:1.6;resize:vertical;outline:none" style-focus="border-color:#171717"></textarea>
         <div style="display:flex;flex-direction:column;gap:10px;border:1px solid #eeeeec;border-radius:10px;padding:16px">
+          <span style="font-size:12.5px;color:#171717;font-weight:700">참고 시안 이미지 <span style="color:#b3b3af;font-weight:400">· 신청 창에서 고객에게 보여줄 시안 사진 · 있을 때만 표시되고, 고객이 클릭하면 크게 볼 수 있어요</span></span>
+          <sc-if value="{{ p.hasRefImgs }}">
+            <div style="display:flex;flex-wrap:wrap;gap:10px">
+              <sc-for list="{{ p.refImgs }}" as="im" hint-placeholder-count="0">
+                <div style="position:relative;width:76px;height:76px;border-radius:10px;overflow:hidden;border:1px solid #e3e3e0">
+                  <img src="{{ im.url }}" style="width:100%;height:100%;object-fit:cover">
+                  <button onClick="{{ im.del }}" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(23,23,23,.75);color:#fff;font-size:11px;line-height:1;cursor:pointer">✕</button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="display:flex;gap:10px;align-items:stretch">
+            <div tabIndex="0" onPaste="{{ p.refPaste }}" onDrop="{{ p.refDrop }}" onDragOver="{{ p.refDragOver }}" style="flex:1;border:1.5px dashed #d4d4d0;border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:center;color:#8a8a86;font-size:12.5px;cursor:text;outline:none;text-align:center" style-focus="border-color:#171717;color:#171717">여기를 클릭한 뒤 Ctrl+V 로 붙여넣기 (여러 장·드래그도 가능)</div>
+            <label style="display:flex;align-items:center;justify-content:center;border:1px solid #d4d4d0;border-radius:10px;padding:0 18px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="border-color:#171717"><input type="file" accept="image/*" multiple="{{ true }}" onChange="{{ p.refFile }}" style="display:none">파일 선택</label>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;border:1px solid #eeeeec;border-radius:10px;padding:16px">
           <span style="font-size:12.5px;color:#171717;font-weight:700">공개 대상 인스타 아이디 <span style="color:#b3b3af;font-weight:400">· 특정 아이디만 추가하면 그 사람만 신청할 수 있어요 · 추가하지 않으면 누구나 신청 가능</span></span>
           <sc-if value="{{ p.hasAllow }}">
             <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#b3b3af;font-weight:600;padding:0 2px"><span style="flex:1">인스타 아이디</span><span style="width:24px"></span><span style="width:120px;text-align:center">선택 가능 개수</span><span style="width:24px"></span></div>
@@ -561,6 +578,16 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
           <div style="font-size:13px;color:#5c5c58;line-height:1.55;white-space:pre-wrap;max-height:120px;overflow:auto">{{ copyText }}</div>
           <button onClick="{{ copyClaim }}" style="align-self:flex-start;background:#fff;border:1px solid #d4d4d0;border-radius:999px;padding:6px 16px;font-size:12.5px;font-weight:600;cursor:pointer" style-hover="border-color:#171717">{{ copyFormBtn }}</button>
         </div>
+        </sc-if>
+        <sc-if value="{{ hasClaimRef }}">
+          <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #eeeeec;padding-top:13px">
+            <span style="font-size:11.5px;color:#8a8a86;font-weight:700">{{ claimRefLabel }}</span>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ claimRefImgs }}" as="r" hint-placeholder-count="0">
+                <img src="{{ r.img }}" onClick="{{ r.open }}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #e3e3e0;cursor:pointer;display:block">
+              </sc-for>
+            </div>
+          </div>
         </sc-if>
         <sc-if value="{{ hasGuide }}"><div style="user-select:none;-webkit-user-select:none;font-size:12.5px;color:#8a8a86;line-height:1.6;border-top:1px solid #eeeeec;padding-top:12px;white-space:pre-wrap;text-wrap:pretty">{{ guideText }}</div></sc-if>
         <sc-if value="{{ hasCErr }}"><div style="font-size:12.5px;color:#171717;background:#f0f0ee;border-radius:8px;padding:8px 12px">{{ cErr }}</div></sc-if>
@@ -902,6 +929,12 @@ class Component extends DCLogic {
         guide: el==='ko'?(p.guide||''):((p.tr&&p.tr[el]&&p.tr[el].guide)||''),
         guidePh: el==='ko'?'고객 안내문 — 선택 창 하단에 표시됩니다 (복사 불가)':((p.guide||'고객 안내문')+' · 원문'),
         setGuide:e=>this.setTr(p.id,el,'guide',e.target.value),
+        refImgs:(p.refImgs||[]).map((u,i)=>({url:u, del:()=>this.upd(p.id,pp=>({refImgs:(pp.refImgs||[]).filter((_,j)=>j!==i)}))})),
+        hasRefImgs:(p.refImgs||[]).length>0,
+        refFile:e=>{ Array.from(e.target.files||[]).forEach(f=>this.readImg(f,url=>this.upd(p.id,pp=>({refImgs:[...(pp.refImgs||[]),url]})))); e.target.value=''; },
+        refPaste:e=>{ const items=(e.clipboardData&&e.clipboardData.items)||[]; for(const it of items){ if(it.type&&it.type.indexOf('image')===0){ e.preventDefault(); this.readImg(it.getAsFile(),url=>this.upd(p.id,pp=>({refImgs:[...(pp.refImgs||[]),url]}))); } } },
+        refDrop:e=>{ e.preventDefault(); Array.from((e.dataTransfer&&e.dataTransfer.files)||[]).forEach(f=>this.readImg(f,url=>this.upd(p.id,pp=>({refImgs:[...(pp.refImgs||[]),url]})))); },
+        refDragOver:e=>e.preventDefault(),
         allowRows:this.allowRowsOf(p).map((r,i)=>({ id:r.id||'', hasId:!!String(r.id||'').trim().replace(/^@/,''), instaUrl:'https://instagram.com/'+String(r.id||'').trim().replace(/^@/,''), setId:e=>this.upd(p.id,pp=>({allowList:this.allowRowsOf(pp).map((x,j)=>j===i?{...x,id:e.target.value}:x)})), cnt:r.cnt||1, setCnt:e=>this.upd(p.id,pp=>({allowList:this.allowRowsOf(pp).map((x,j)=>j===i?{...x,cnt:Math.max(1,parseInt(e.target.value,10)||1)}:x)})), del:()=>this.upd(p.id,pp=>({allowList:this.allowRowsOf(pp).filter((_,j)=>j!==i)})) })),
         addAllow:()=>this.upd(p.id,pp=>({allowList:[...this.allowRowsOf(pp),{id:'',cnt:pp.perPerson||1}]})),
         hasAllow:this.allowRowsOf(p).length>0,
@@ -1017,7 +1050,7 @@ class Component extends DCLogic {
         else this.setState({cErr:failMsg||L.cErrClosed});
       })();
     };
-    let claimTitle='', guideText='', copyText='', claimShipFields=[], claimOptGroups=[], claimSizeOptions=[], claimMulti=false;
+    let claimTitle='', guideText='', copyText='', claimShipFields=[], claimOptGroups=[], claimSizeOptions=[], claimMulti=false, claimRefImgs=[];
     if(st.claiming){
       const p=st.products.find(x=>x.id===st.claiming.pid);
       claimMulti=!!(p&&this.limitFor(p,st.cname||viewerKey)>1);
@@ -1027,6 +1060,7 @@ class Component extends DCLogic {
       const picksDisp=picks.map(lb=>{ const sz=((p&&p.sizes)||[]).find(x=>(x.label||'옵션')===lb); return sz?(this.trGet(sz,st.lang,'label')||lb):lb; });
       claimTitle=claimMulti?pName:(pName+(picksDisp[0]?' · '+picksDisp[0]:''));
       guideText=(p&&this.trGet(p,st.lang,'guide'))||'';
+      claimRefImgs=((p&&p.refImgs)||[]).map((u,i)=>({img:u, open:()=>this.setState({lightbox:{imgs:(p.refImgs||[]),i}})}));
       const name=st.cname.trim();
       if(p&&p.copyForm&&p.copyForm.trim()) copyText=this.fillForm(p.copyForm,p,picks[0]||'',name);
       else copyText=claimTitle+(name?' · '+name:'');
@@ -1244,7 +1278,7 @@ class Component extends DCLogic {
       bulkAddBtn:()=>this.bulkAddBuyers(this.state.bBulk),
       overviewCards, editCards,
       backToList:()=>{ if(this.state.dirty) this.commitEdits(false); this.setState({editId:null}); },
-      claimOpen:!!st.claiming, claimTitle, copyText, copyClaim, guideText, hasGuide:!!guideText, closeClaim:()=>{ (this.state.cstage||[]).forEach(s=>URL.revokeObjectURL(s.url)); this.setState({claiming:null,cErr:'',cship:{},copt:{},csizes:[],cstage:[]}); },
+      claimOpen:!!st.claiming, claimTitle, copyText, copyClaim, guideText, hasGuide:!!guideText, claimRefImgs, hasClaimRef:claimRefImgs.length>0, claimRefLabel:L.draftAdmin, closeClaim:()=>{ (this.state.cstage||[]).forEach(s=>URL.revokeObjectURL(s.url)); this.setState({claiming:null,cErr:'',cship:{},copt:{},csizes:[],cstage:[]}); },
       claimMulti, claimSizeOptions,
       draftLabel:L.draftLabel, draftIntro:L.draftIntro, cStage, cDrop, cDragOver, cStageThumbs, hasCStage:cStageThumbs.length>0,
       claimShipFields, hasClaimShip:claimShipFields.length>0, claimOptGroups, hasClaimOpt:claimOptGroups.length>0, showLegacyCopy:!!st.claiming&&!claimMulti&&claimShipFields.length===0&&claimOptGroups.length===0,
