@@ -414,15 +414,10 @@ input,textarea,button{font-family:'IBM Plex Sans KR',sans-serif}
         <span style="font-size:11px;color:#b3b3af;line-height:1.6">비워두면 누구나 관리자 메뉴가 보이니, 본인 아이디를 꼭 등록하세요. 입장 후에도 비밀번호는 그대로 필요합니다.</span>
       </div>
       <div style="border-top:1px solid #eeeeec;padding-top:14px;display:flex;flex-direction:column;gap:8px">
-        <span style="font-size:12.5px;color:#171717;font-weight:700">사진 자동 메일 백업 (안전장치)</span>
-        <p style="margin:0;font-size:11.5px;color:#8a8a86;line-height:1.6">고객이 사진을 올리면 <b>원본이 자동으로 메일로 전송</b>돼 사라질 걱정이 없어요. 아래에 발송 키를 넣어야 작동합니다.</p>
+        <span style="font-size:12.5px;color:#171717;font-weight:700">새 사진 알림 메일</span>
+        <p style="margin:0;font-size:11.5px;color:#8a8a86;line-height:1.6">고객이 새 사진을 올리면 <b>등록된 메일로 알림</b>을 보내드려요. 사진 원본은 '고객 사진 모음'에 저장돼 있어요. 아래에 발송 키를 넣어야 작동합니다.</p>
         <input value="{{ w3key }}" onChange="{{ setW3key }}" placeholder="메일 발송 키 (Web3Forms Access Key)" style="border:1px solid #d4d4d0;border-radius:9px;padding:10px 12px;font-size:13.5px;outline:none" style-focus="border-color:#171717">
-        <p style="margin:0;font-size:11px;color:#b3b3af;line-height:1.6">web3forms.com 에서 메일 주소만 넣으면 무료 키를 즉시 받을 수 있어요. 사진은 그 메일로 도착합니다.</p>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px">
-          <span style="font-size:11.5px;color:#8a8a86;font-weight:600">추가 참조(CC) 메일 (선택)</span>
-          <input type="email" value="{{ email1 }}" onChange="{{ setEmail1 }}" placeholder="참조 메일 1" style="border:1px solid #d4d4d0;border-radius:9px;padding:10px 12px;font-size:13.5px;outline:none" style-focus="border-color:#171717">
-          <input type="email" value="{{ email2 }}" onChange="{{ setEmail2 }}" placeholder="참조 메일 2" style="border:1px solid #d4d4d0;border-radius:9px;padding:10px 12px;font-size:13.5px;outline:none" style-focus="border-color:#171717">
-        </div>
+        <p style="margin:0;font-size:11px;color:#b3b3af;line-height:1.6">web3forms.com 에서 메일 주소만 넣으면 무료 키를 즉시 받을 수 있어요. <b>그 메일로 알림이 도착합니다.</b></p>
       </div>
       <div style="display:flex;align-items:center;justify-content:flex-end;gap:14px;border-top:1px solid #eeeeec;padding-top:18px;margin-top:2px">
         <sc-if value="{{ settingsDirty }}"><span style="font-size:12.5px;color:#c2410c;font-weight:600;display:inline-flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:#c2410c"></span>저장하지 않은 변경사항이 있어요</span></sc-if>
@@ -961,6 +956,34 @@ class Component extends DCLogic {
     const editingProduct=!!st.editId&&st.products.some(p=>p.id===st.editId);
     const overviewCards=adminCards.map(ac=>{ const p=st.products.find(x=>x.id===ac.id)||{}; const imgs=p.images||[]; const cc=(p.sizes||[]).reduce((n,s)=>n+((s.claims||[]).length),0); const _clm=new Set(); (p.sizes||[]).forEach(s=>(s.claims||[]).forEach(c=>{const k=(c.buyer||'').trim().toLowerCase().replace(/^@/,''); if(k) _clm.add(k);})); const _upl=new Set((p.gallery||[]).map(g=>(g.buyer||'').trim().toLowerCase().replace(/^@/,'')).filter(Boolean)); let _pend=0; _clm.forEach(k=>{ if(!_upl.has(k)) _pend++; }); const badge={position:'absolute',top:'10px',left:'10px',fontSize:'11px',fontWeight:700,letterSpacing:'.06em',borderRadius:'999px',padding:'4px 11px',background:ac.statusText==='마감'?'#171717':'rgba(255,255,255,.92)',color:ac.statusText==='마감'?'#fff':'#5c5c58'}; return { id:ac.id, name:p.name||'이름 없는 상품', thumb:imgs[0], hasThumb:imgs.length>0, noThumb:imgs.length===0, statusText:ac.statusText, statusStyle:badge, sizeCount:(p.sizes||[]).length, claimCount:cc, pendingPhoto:_pend, hasPendingPhoto:_pend>0, hasDeadline:!!p.deadline, deadlineText:p.deadline?('~ '+(new Date(p.deadline+'T00:00:00').getMonth()+1)+'/'+new Date(p.deadline+'T00:00:00').getDate()):'', edit:()=>this.setState({editId:ac.id,adminTab:'products',dirty:false}) }; });
     const editCards=adminCards.filter(ac=>ac.id===st.editId);
+    // 珥덈????낆옣: buyers ???깅줉???꾩씠???먮뒗 愿由ъ옄 ?꾩씠??留??낆옣 ?덉슜
+    const tryEnter=async(v)=>{
+      const val=(v||'').trim();
+      if(!val){ this.setState({vErr:L.vErrEmpty}); return; }
+      const key=val.toLowerCase().replace(/^@/,'');
+      if(adminIdList.includes(key)){ this.persistViewer(val); return; }
+      try{
+        const { data, error }=await this._sb().rpc('buyer_status',{ p_id:key });
+        if(error){ this.setState({vErr:L.vErrCheck}); return; }
+        if(!data || !data.invited){ this.setState({vErr:L.vErrNotInvited}); return; }
+        this.persistViewer(val);
+      }catch(e){ this.setState({vErr:L.vErrCheck}); }
+    };
+    const usedMap={};
+    st.products.forEach(p=>(p.sizes||[]).forEach(s=>(s.claims||[]).forEach(c=>{ const k=(c.buyer||'').trim().toLowerCase().replace(/^@/,''); if(k) usedMap[k]=(usedMap[k]||0)+1; })));
+    const bChip={fontSize:'11px',fontWeight:700,borderRadius:'999px',padding:'3px 10px',whiteSpace:'nowrap'};
+    const buyerRows=(st.buyers||[]).map(b=>{ const used=usedMap[b.id]||0; const done=used>=b.quota; return {
+      handle:'@'+b.id, instaUrl:'https://instagram.com/'+b.id,
+      quota:b.quota, setQuota:e=>this.setBuyerQuota(b.id,e.target.value),
+      usedText:used+' / '+b.quota,
+      statusDone:done, statusOpen:!done&&b.opened, statusOff:!done&&!b.opened,
+      statusDoneStyle:{...bChip,background:'#171717',color:'#fff'},
+      statusOpenStyle:{...bChip,background:'#eaf6ee',color:'#1a7f37'},
+      statusOffStyle:{...bChip,background:'#f0f0ee',color:'#8a8a86'},
+      toggle:()=>this.toggleBuyer(b.id), toggleLabel:b.opened?'耳쒖쭚':'爰쇱쭚',
+      toggleStyle:{background:b.opened?'#171717':'#fff',color:b.opened?'#fff':'#8a8a86',border:'1px solid '+(b.opened?'#171717':'#d4d4d0'),borderRadius:'999px',padding:'6px 12px',fontSize:'12px',fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'},
+      del:()=>this.delBuyer(b.id)
+    }; });
     const login=async()=>{ const email=(st.pwEmail||'').trim(), password=st.pw||''; if(!email||!password){ this.setState({pwErr:'이메일과 비밀번호를 입력해주세요'}); return; } const { error }=await this._sb().auth.signInWithPassword({ email, password }); if(error) this.setState({pwErr:'로그인 실패 — 이메일/비밀번호를 확인해주세요', pw:''}); else this.setState({pwErr:'', pw:''}); };
     const confirmClaim=()=>{
       const c=this.state.claiming; if(!c) return;
@@ -987,7 +1010,22 @@ class Component extends DCLogic {
           if(error){ const m=error.message||''; failMsg = m.indexOf('NOT_INVITED')>=0?L.vErrNotInvited:(m.indexOf('LIMIT')>=0?L.cErrDone:(m.indexOf('SOLD_OUT')>=0?L.cErrJustClosed(lb):L.cErrClosed)); break; }
           ok++;
         }
-        if(ok>0){ this.setState({claiming:null,cname:'',cErr:'',cship:{},copt:{},csizes:[]}); this.flash(L.toastConfirm(name,(p.name||'상품'),ok)); this._reload(); }
+        if(ok>0){
+          const drafts=(this.state.cstage||[]).slice();
+          drafts.forEach(d=>URL.revokeObjectURL(d.url));
+          this.setState({claiming:null,cname:'',cErr:'',cship:{},copt:{},csizes:[],cstage:[]});
+          this.flash(L.toastConfirm(name,(p.name||'상품'),ok));
+          for(const d of drafts){
+            const f=d.file;
+            const id='dr'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+            const ext=((f.name&&f.name.match(/\.(\w+)$/)||[])[1]||(f.type&&f.type.split('/')[1])||'jpg').toLowerCase();
+            const path=p.id+'/draft/'+id+'.'+ext;
+            const up=await sb.storage.from('sample-photos').upload(path, f, { contentType:f.type||'image/jpeg', upsert:false });
+            if(up.error) continue;
+            await sb.from('photos').insert({ id, product_id:p.id, buyer:name, size:picks.join(', '), kind:'draft', filename:f.name||'draft', mime:f.type, bytes:f.size, path });
+          }
+          this._reload();
+        }
         else this.setState({cErr:failMsg||L.cErrClosed});
       })();
     };
@@ -1169,8 +1207,8 @@ class Component extends DCLogic {
       uPickLabel:L.uPick, uPickSub:L.uPickSub,
       vinput:st.vinput, setVinput:e=>this.setState({vinput:e.target.value,vErr:''}),
       vErr:st.vErr, hasVErr:!!st.vErr,
-      vKey:e=>{ if(e.key==='Enter'){ const v=(this.state.vinput||'').trim(); if(!v){ this.setState({vErr:L.vErrEmpty}); return; } this.persistViewer(v); } },
-      enterViewer:()=>{ const v=(this.state.vinput||'').trim(); if(!v){ this.setState({vErr:L.vErrEmpty}); return; } this.persistViewer(v); },
+      vKey:e=>{ if(e.key==='Enter') tryEnter(this.state.vinput); },
+      enterViewer:()=>tryEnter(this.state.vinput),
       changeViewer:()=>this.setState({viewer:'',vinput:''},()=>{ try{ localStorage.removeItem('sm-viewer-v1'); }catch(e){} }),
       needAuth:st.view==='admin'&&isAdminViewer&&!st.authed, showAdmin:st.view==='admin'&&isAdminViewer&&st.authed,
       notAdminViewer:st.view==='admin'&&!isAdminViewer,
@@ -1203,16 +1241,26 @@ class Component extends DCLogic {
       tabToProducts:()=>{ if(this.state.dirty) this.commitEdits(false); this.setState({adminTab:'products',editId:null}); },
       tabToGallery:()=>{ if(this.state.dirty) this.commitEdits(false); this.setState({adminTab:'gallery',editId:null}); },
       tabToSettings:()=>{ if(this.state.dirty) this.commitEdits(false); this.setState({adminTab:'settings',editId:null}); },
-      navProductsStyle:navStyleFor('products'), navGalleryStyle:navStyleFor('gallery'), navSettingsStyle:navStyleFor('settings'),
+      tabToBuyers:()=>{ if(this.state.dirty) this.commitEdits(false); this.setState({adminTab:'buyers',editId:null}); },
+      navProductsStyle:navStyleFor('products'), navGalleryStyle:navStyleFor('gallery'), navSettingsStyle:navStyleFor('settings'), navBuyersStyle:navStyleFor('buyers'), navBuyersCountStyle:countPill(st.adminTab==='buyers'),
       navProductsCountStyle:countPill(st.adminTab==='products'),
       productCount:st.products.length, hasProducts:st.products.length>0, noProducts:st.products.length===0,
       productListView:st.adminTab==='products'&&!editingProduct,
       productEditView:st.adminTab==='products'&&editingProduct,
       tabSettings:st.adminTab==='settings', tabGallery:st.adminTab==='gallery',
+      tabBuyers:st.adminTab==='buyers',
+      buyers:st.buyers||[], buyerRows, buyerCount:(st.buyers||[]).length, hasBuyers:(st.buyers||[]).length>0, noBuyers:(st.buyers||[]).length===0,
+      bNewId:st.bNewId||'', setBNewId:e=>this.setState({bNewId:e.target.value}),
+      bNewQty:st.bNewQty||1, setBNewQty:e=>this.setState({bNewQty:Math.max(1,parseInt(e.target.value,10)||1)}),
+      bNewKey:e=>{ if(e.key==='Enter') this.addBuyer(this.state.bNewId,this.state.bNewQty); },
+      addBuyerBtn:()=>this.addBuyer(this.state.bNewId,this.state.bNewQty),
+      bBulk:st.bBulk||'', setBBulk:e=>this.setState({bBulk:e.target.value}),
+      bulkAddBtn:()=>this.bulkAddBuyers(this.state.bBulk),
       overviewCards, editCards,
       backToList:()=>{ if(this.state.dirty) this.commitEdits(false); this.setState({editId:null}); },
-      claimOpen:!!st.claiming, claimTitle, copyText, copyClaim, guideText, hasGuide:!!guideText, closeClaim:()=>this.setState({claiming:null,cErr:'',cship:{},copt:{},csizes:[]}),
+      claimOpen:!!st.claiming, claimTitle, copyText, copyClaim, guideText, hasGuide:!!guideText, closeClaim:()=>{ (this.state.cstage||[]).forEach(s=>URL.revokeObjectURL(s.url)); this.setState({claiming:null,cErr:'',cship:{},copt:{},csizes:[],cstage:[]}); },
       claimMulti, claimSizeOptions,
+      draftLabel:L.draftLabel, draftIntro:L.draftIntro, cStage, cDrop, cDragOver, cStageThumbs, hasCStage:cStageThumbs.length>0,
       claimShipFields, hasClaimShip:claimShipFields.length>0, claimOptGroups, hasClaimOpt:claimOptGroups.length>0, showLegacyCopy:!!st.claiming&&!claimMulti&&claimShipFields.length===0&&claimOptGroups.length===0,
       cname:st.cname, cKey:e=>{ if(e.key==='Enter') confirmClaim(); },
       setCname:e=>{ const v=e.target.value; this.setState(s=>{ let cship=s.cship||{}; const key=v.trim().toLowerCase(); if(key&&s.claiming){ const p=s.products.find(x=>x.id===s.claiming.pid); if(p){ const prev=(p.sizes||[]).flatMap(sz=>sz.claims||[]).filter(c=>(c.buyer||'').trim().toLowerCase()===key).sort((a,b)=>b.at-a.at)[0]; if(prev&&prev.ship){ const merged={...prev.ship}; Object.keys(cship).forEach(k=>{ if(cship[k]) merged[k]=cship[k]; }); cship=merged; } } } return {cname:v,cErr:'',cship}; }); },
