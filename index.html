@@ -967,17 +967,15 @@ class Component extends DCLogic {
     const overviewCards=adminCards.map(ac=>{ const p=st.products.find(x=>x.id===ac.id)||{}; const imgs=p.images||[]; const cc=(p.sizes||[]).reduce((n,s)=>n+((s.claims||[]).length),0); const _clm=new Set(); (p.sizes||[]).forEach(s=>(s.claims||[]).forEach(c=>{const k=(c.buyer||'').trim().toLowerCase().replace(/^@/,''); if(k) _clm.add(k);})); const _upl=new Set((p.gallery||[]).map(g=>(g.buyer||'').trim().toLowerCase().replace(/^@/,'')).filter(Boolean)); let _pend=0; _clm.forEach(k=>{ if(!_upl.has(k)) _pend++; }); const badge={position:'absolute',top:'10px',left:'10px',fontSize:'11px',fontWeight:700,letterSpacing:'.06em',borderRadius:'999px',padding:'4px 11px',background:ac.statusText==='마감'?'#171717':'rgba(255,255,255,.92)',color:ac.statusText==='마감'?'#fff':'#5c5c58'}; return { id:ac.id, name:p.name||'이름 없는 상품', thumb:imgs[0], hasThumb:imgs.length>0, noThumb:imgs.length===0, statusText:ac.statusText, statusStyle:badge, sizeCount:(p.sizes||[]).length, claimCount:cc, pendingPhoto:_pend, hasPendingPhoto:_pend>0, hasDeadline:!!p.deadline, deadlineText:p.deadline?('~ '+(new Date(p.deadline+'T00:00:00').getMonth()+1)+'/'+new Date(p.deadline+'T00:00:00').getDate()):'', edit:()=>this.setState({editId:ac.id,adminTab:'products',dirty:false}) }; });
     const editCards=adminCards.filter(ac=>ac.id===st.editId);
     // 珥덈????낆옣: buyers ???깅줉???꾩씠???먮뒗 愿由ъ옄 ?꾩씠??留??낆옣 ?덉슜
-    const tryEnter=async(v)=>{
+    // 입장 판정: 공개대상(상품별 허용 아이디, #1) 기준. 관리자이거나,
+    // 어느 상품이든 볼 수 있으면(허용목록 비었거나 그 목록에 있으면) 입장 허용.
+    const tryEnter=(v)=>{
       const val=(v||'').trim();
       if(!val){ this.setState({vErr:L.vErrEmpty}); return; }
       const key=val.toLowerCase().replace(/^@/,'');
-      if(adminIdList.includes(key)){ this.persistViewer(val); return; }
-      try{
-        const { data, error }=await this._sb().rpc('buyer_status',{ p_id:key });
-        if(error){ this.setState({vErr:L.vErrCheck}); return; }
-        if(!data || !data.invited){ this.setState({vErr:L.vErrNotInvited}); return; }
-        this.persistViewer(val);
-      }catch(e){ this.setState({vErr:L.vErrCheck}); }
+      const allowed=adminIdList.includes(key) || st.products.some(p=>{ const a=this.parseAllow(p); return a.length===0 || a.some(x=>x.id===key); });
+      if(allowed){ this.persistViewer(val); return; }
+      this.setState({vErr:L.vErrNotInvited});
     };
     const usedMap={};
     st.products.forEach(p=>(p.sizes||[]).forEach(s=>(s.claims||[]).forEach(c=>{ const k=(c.buyer||'').trim().toLowerCase().replace(/^@/,''); if(k) usedMap[k]=(usedMap[k]||0)+1; })));
